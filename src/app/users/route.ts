@@ -9,8 +9,5 @@ export async function GET() {
       collections: true,
     },
   });
-  return NextResponse.json(
-    { collections: users },
-    { status: ApiStatusCode.OK }
-  );
+  return NextResponse.json({ users }, { status: ApiStatusCode.OK });
 }

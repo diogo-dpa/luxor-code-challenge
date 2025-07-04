@@ -1,0 +1,8 @@
+export enum ApiStatusCode {
+  BAD_REQUEST = 400,
+  NOT_FOUND = 404,
+  CREATED = 201,
+  OK = 200,
+  NO_CONTENT = 204,
+  INTERNAL_SERVER_ERROR = 500,
+}

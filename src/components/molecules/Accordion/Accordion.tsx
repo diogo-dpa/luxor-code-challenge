@@ -12,15 +12,32 @@ import { ConfirmationModal } from "../ConfirmationModal/ConfirmationModal";
 import { useState } from "react";
 import { Status } from "../../../../prisma/generated/prisma";
 import { useRouter } from "next/navigation";
+import { useUserContext } from "@/contexts/userContext";
+import { useBids } from "@/hooks/useBids";
+import { useCollectionsContext } from "@/contexts/collectionsContext";
 
 interface AccordionDemoProps {
   items: {
+    id: string;
     title: string;
-    content: React.ReactNode;
+    description: string;
+    stocks: number;
+    price: number;
+    ownerInfo: { id: string; name: string };
+    bids: {
+      id: string;
+      price: string;
+      status: Status;
+      bidderInfo: { id: string; name: string };
+    }[];
   }[];
 }
 
 export function AccordionDemo({ items }: AccordionDemoProps) {
+  const { userId } = useUserContext();
+  const { deleteBid, patchBidStatus } = useBids();
+  const { deleteCollection, fetchCollections } = useCollectionsContext();
+
   const [actionDetails, setActionDetails] = useState<{
     actionName: string;
     actionDescription: string;
@@ -29,19 +46,25 @@ export function AccordionDemo({ items }: AccordionDemoProps) {
 
   const router = useRouter();
 
-  const onChangeBidStatus = (status: string) => {
-    console.log(`Bid status changed to: ${status}`);
-    setActionDetails(null); // Reset action details after performing the action
+  const onChangeBidStatus = async (
+    collectionId: string,
+    bidId: string,
+    status: Status
+  ) => {
+    await patchBidStatus(collectionId, bidId, status);
+    setActionDetails(null);
+    await fetchCollections();
   };
 
-  const onDeleteCollection = () => {
-    console.log("Delete collection action triggered");
-    setActionDetails(null); // Reset action details after performing the action
+  const onDeleteCollection = async (collectionId: string) => {
+    await deleteCollection(collectionId);
+    setActionDetails(null);
   };
 
-  const onDeleteBid = () => {
-    console.log("Delete bid action triggered");
-    setActionDetails(null); // Reset action details after performing the action
+  const onDeleteBid = async (bidId: string) => {
+    await deleteBid(bidId);
+    setActionDetails(null);
+    await fetchCollections();
   };
 
   return (
@@ -53,52 +76,72 @@ export function AccordionDemo({ items }: AccordionDemoProps) {
           className="border-b border-gray-200">
           <AccordionTrigger className="bg-gray-100 text-lg font-semibold p-4">
             <AccordionHeader
-              title={item.title}
-              description="This is a description for the accordion item."
-              owner="Diogo Almazan"
-              isOwner={true}
+              collectionInfo={{
+                name: item.title,
+                description: item.description || "No description available",
+                stocks: item.stocks,
+                price: item.price?.toFixed(2) ?? "0.00",
+              }}
+              owner={item.ownerInfo.name}
+              isOwner={item.ownerInfo.id === userId}
               onEdit={() =>
-                router.push(`/collections/edit?collectionId=${item.title}`)
+                router.push(`/collections/edit?collectionId=${item.id}`)
               }
               onDelete={() =>
                 setActionDetails({
                   actionName: "Delete Collection",
                   actionDescription: `Are you sure you want to delete the collection ${item.title}?`,
-                  action: () => onDeleteCollection(),
+                  action: () => onDeleteCollection(item.id),
                 })
               }
-              onPlaceBid={() => router.push(`/bids/create`)}
+              onPlaceBid={() =>
+                router.push(`/bids/create?collectionId=${item.id}`)
+              }
             />
           </AccordionTrigger>
           <AccordionContent className="text-gray-700">
-            <AccordionBidContent
-              title={item.title}
-              price="$100.00"
-              bidder="John Doe"
-              isOwner={true}
-              onChangeStatus={(status: string) =>
-                setActionDetails({
-                  actionName:
-                    status === Status.ACCEPTED ? "Accept Bid" : "Delete Bid",
-                  actionDescription: `Are you sure you want to accept the bid ${item.title}?`,
-                  action: () => onChangeBidStatus(status),
-                })
-              }
-              onEdit={() => router.push(`/bids/edit?bidId=${item.title}`)}
-              onDelete={() =>
-                setActionDetails({
-                  actionName: "Delete Bid",
-                  actionDescription: `Are you sure you want to delete the bid ${item.title}?`,
-                  action: () => onDeleteBid(),
-                })
-              }
-            />
+            {item.bids.length > 0 ? (
+              item.bids.map((bid, index) => (
+                <AccordionBidContent
+                  key={bid.id}
+                  title={`Bid ${index + 1}`}
+                  price={bid.price}
+                  bidder={bid.bidderInfo.name}
+                  status={bid.status}
+                  isOwner={bid.bidderInfo.id === userId}
+                  onChangeStatus={(status: Status) =>
+                    setActionDetails({
+                      actionName:
+                        status === Status.ACCEPTED
+                          ? "Accept Bid"
+                          : "Delete Bid",
+                      actionDescription: `Are you sure you want to ${
+                        status === Status.ACCEPTED ? "accept" : "reject"
+                      } the bid ${bid.price}?`,
+                      action: () => onChangeBidStatus(item.id, bid.id, status),
+                    })
+                  }
+                  onEdit={() => router.push(`/bids/edit?bidId=${bid.id}`)}
+                  onDelete={() =>
+                    setActionDetails({
+                      actionName: "Delete Bid",
+                      actionDescription: `Are you sure you want to delete the bid ${bid.price}?`,
+                      action: () => onDeleteBid(bid.id),
+                    })
+                  }
+                />
+              ))
+            ) : (
+              <p className="text-gray-500">
+                No bids available for this collection.
+              </p>
+            )}
           </AccordionContent>
         </AccordionItem>
       ))}
       <ConfirmationModal
         title={`Confirm Action - ${actionDetails?.actionName}`}
-        description="Are you sure you want to perform this action?"
+        description={actionDetails?.actionDescription || "Unknown action"}
         onConfirm={actionDetails ? () => actionDetails?.action() : () => {}}
         onCancel={() => setActionDetails(null)}
         isOpen={!!actionDetails}

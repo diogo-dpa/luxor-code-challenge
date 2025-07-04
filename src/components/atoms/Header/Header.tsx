@@ -30,9 +30,13 @@ export function Header({ title, className }: HeaderProps) {
         {title}
       </h1>
       <div className="flex items-center">
-        {selectedUser && (
+        {selectedUser ? (
           <p className="mr-2 text-lg text-gray-600 dark:text-gray-400">
-            {selectedUser}
+            Selected User: <span className="font-semibold">{selectedUser}</span>
+          </p>
+        ) : (
+          <p className="mr-2 text-lg text-gray-600 dark:text-gray-400">
+            No user selected
           </p>
         )}
         <CustomSelect

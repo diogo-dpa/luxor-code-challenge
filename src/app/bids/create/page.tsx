@@ -16,17 +16,33 @@ import {
 import { Input } from "@/components/ui/input";
 import { PageWrapper } from "@/components/organisms/PageWrapper/PageWrapper";
 import { bidConfig, bidFormSchema } from "../page.utils";
+import { useBids } from "@/hooks/useBids";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Bid } from "../../../../prisma/generated/prisma";
+import { useUserContext } from "@/contexts/userContext";
 
 export default function BidCreationPage() {
+  const { createBid } = useBids();
+  const { userId } = useUserContext();
+  const router = useRouter();
+  const collectionId = useSearchParams().get("collectionId");
   const form = useForm<z.infer<typeof bidFormSchema>>({
     resolver: zodResolver(bidFormSchema),
     defaultValues: {
       price: 0,
     },
   });
-  function onSubmit(data: z.infer<typeof bidFormSchema>) {
+  async function onSubmit(data: z.infer<typeof bidFormSchema>) {
+    const payload: Omit<Bid, "id"> = {
+      price: data.price,
+      collectionId: collectionId ? parseInt(collectionId) : 0,
+      userId: userId ? parseInt(userId) : 0,
+      status: "PENDING",
+      createdAt: new Date(),
+    };
+    await createBid(payload);
     toast("You submitted the following values");
-    console.log(data);
+    router.push("/");
   }
 
   return (

@@ -87,11 +87,51 @@ export async function DELETE(
       where: { id: parsedBidId },
     });
 
-    return NextResponse.json(null, { status: ApiStatusCode.NO_CONTENT });
+    return NextResponse.json(null);
   } catch (_error: unknown) {
     console.error("Error deleting bid:", _error);
     return NextResponse.json(
       { error: "Failed to delete bid" },
+      { status: ApiStatusCode.INTERNAL_SERVER_ERROR }
+    );
+  }
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<BidIdRouteParams> }
+) {
+  const { bid_id } = await params;
+  const parsedBidId = parseInt(bid_id);
+
+  if (!bid_id || isNaN(parsedBidId)) {
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: ApiStatusCode.BAD_REQUEST }
+    );
+  }
+
+  try {
+    const bid = await prisma.bid.findUnique({
+      where: { id: parsedBidId },
+      include: {
+        collection: true,
+        user: true,
+      },
+    });
+
+    if (!bid) {
+      return NextResponse.json(
+        { error: "Bid not found" },
+        { status: ApiStatusCode.NOT_FOUND }
+      );
+    }
+
+    return NextResponse.json({ bid }, { status: ApiStatusCode.OK });
+  } catch (_error: unknown) {
+    console.error("Error fetching bid:", _error);
+    return NextResponse.json(
+      { error: "Failed to fetch bid" },
       { status: ApiStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

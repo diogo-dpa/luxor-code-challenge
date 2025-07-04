@@ -16,22 +16,53 @@ import {
 import { Input } from "@/components/ui/input";
 import { PageWrapper } from "@/components/organisms/PageWrapper/PageWrapper";
 import { bidConfig, bidFormSchema } from "../page.utils";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useBids } from "@/hooks/useBids";
+import { Bid } from "../../../../prisma/generated/prisma";
+import { useEffect } from "react";
 
 export default function BidEditionPage() {
+  const { updateBid, fetchBidById, bid } = useBids();
+  const router = useRouter();
   const bidId = useSearchParams().get("bidId");
   const form = useForm<z.infer<typeof bidFormSchema>>({
     resolver: zodResolver(bidFormSchema),
     defaultValues: {
-      price: 0,
+      price: bid ? bid.price : 0,
     },
   });
-  function onSubmit(data: z.infer<typeof bidFormSchema>) {
-    toast("You submitted the following values");
-    console.log(data);
+
+  useEffect(() => {
+    if (bid) {
+      form.setValue("price", bid.price);
+    }
+  }, [bid, form]);
+
+  useEffect(() => {
+    if (bidId) {
+      fetchBidById(bidId);
+    }
+  }, [bidId]);
+
+  async function onSubmit(data: z.infer<typeof bidFormSchema>) {
+    if (!bidId) {
+      toast.error("Bid ID is required to update the bid.");
+      return;
+    }
+
+    const payload: Omit<Bid, "id" | "createdAt"> = {
+      price: data.price,
+      collectionId: bid?.collectionId ? bid.collectionId : 0,
+      userId: bid?.userId ? bid.userId : 0,
+      status: "PENDING",
+    };
+    const parsedBidId = bidId ? String(bidId) : "";
+    await updateBid(parsedBidId, payload);
+    toast("You updated the following values");
+    router.push("/");
   }
 
-  if (!bidId) {
+  if (!bidId || !bid) {
     return (
       <PageWrapper title="Error" actionText="Back" actionLink="/">
         <div className="text-center">

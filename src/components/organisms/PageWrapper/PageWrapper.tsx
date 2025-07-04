@@ -33,7 +33,7 @@ export function PageWrapper({
         <p className="text-gray-500 text-sm">
           Created by{" "}
           <a
-            href="https://google.com"
+            href="https://github.com/diogo-dpa"
             className="text-blue-500 ml-1 hover:underline">
             Diogo Almazan
           </a>

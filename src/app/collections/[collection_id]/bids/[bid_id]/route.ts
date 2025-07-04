@@ -10,8 +10,6 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<CollectionIdBidIdRouteParams> }
 ) {
-  const { status } = await request.json();
-
   const { collection_id, bid_id } = await params;
 
   const parsedCollectionId = parseInt(collection_id);
@@ -19,7 +17,6 @@ export async function PATCH(
 
   if (
     !collection_id ||
-    !status ||
     !bid_id ||
     isNaN(parsedCollectionId) ||
     isNaN(parsedBidId)
@@ -39,13 +36,13 @@ export async function PATCH(
   try {
     const bid = await prisma.bid.update({
       where: { id: parsedBidId, collectionId: parsedCollectionId },
-      data: { status },
+      data: { status: data.status },
       include: {
         user: true,
       },
     });
 
-    if (status === Status.ACCEPTED) {
+    if (data.status === Status.ACCEPTED) {
       await prisma.bid.updateMany({
         where: { NOT: { id: parsedBidId }, collectionId: parsedCollectionId },
         data: { status: Status.REJECTED },

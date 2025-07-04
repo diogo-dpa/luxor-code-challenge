@@ -16,9 +16,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { PageWrapper } from "@/components/organisms/PageWrapper/PageWrapper";
 import { collectionConfig, collectionFormSchema } from "../page-utils";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCollections } from "@/hooks/useCollections";
+import { Collection } from "../../../../prisma/generated/prisma";
+import { useUserContext } from "@/contexts/userContext";
+import { useEffect } from "react";
 
 export default function CollectionEditPage() {
+  const { updateCollection, fetchCollectionById, collection } =
+    useCollections();
+  const { userId } = useUserContext();
+  const router = useRouter();
   const collectionId = useSearchParams().get("collectionId");
 
   const form = useForm<z.infer<typeof collectionFormSchema>>({
@@ -31,9 +39,37 @@ export default function CollectionEditPage() {
     },
   });
 
-  function onSubmit(data: z.infer<typeof collectionFormSchema>) {
+  useEffect(() => {
+    if (collection) {
+      form.setValue("name", collection.name);
+      form.setValue("description", collection.description);
+      form.setValue("stocks", collection.stocks);
+      form.setValue("price", collection.price);
+    }
+  }, [collection, form]);
+
+  useEffect(() => {
+    if (collectionId) {
+      fetchCollectionById(collectionId);
+    }
+  }, [collectionId]);
+
+  async function onSubmit(data: z.infer<typeof collectionFormSchema>) {
+    if (!collectionId) {
+      toast.error("Collection ID is required for updating.");
+      return;
+    }
+
+    const payload: Omit<Collection, "id" | "createdAt"> = {
+      price: data.price,
+      name: data.name,
+      description: data.description,
+      stocks: data.stocks,
+      userId: userId ? parseInt(userId) : 0,
+    };
+    await updateCollection(collectionId, payload);
     toast("You submitted the following values");
-    console.log(data);
+    router.push("/");
   }
 
   if (!collectionId) {

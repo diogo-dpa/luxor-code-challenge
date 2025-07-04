@@ -1,41 +1,78 @@
 import { useState, useEffect } from "react";
 import { ApiStatusCode } from "@/shared/api-constants";
-import { Collection } from "../../prisma/generated/prisma";
+import { Bid, Collection, User } from "../../prisma/generated/prisma";
+
+type CollectionWithRelations = Collection & {
+  bids: Array<Bid & { user: User }>;
+} & {
+  user: User;
+};
 
 type CollectionResponse = {
-  collections: Collection[];
+  collections: Array<CollectionWithRelations>;
 };
 
 export function useCollections() {
   const [collections, setCollections] = useState<CollectionResponse>({
     collections: [],
   });
+  const [collection, setCollection] = useState<CollectionWithRelations | null>(
+    null
+  );
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/collections");
-        if (response.status === ApiStatusCode.OK) {
-          const data: CollectionResponse = await response.json();
-          setCollections(data);
-        } else {
-          throw new Error("Failed to fetch collections");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
+  const fetchCollections = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/collections", {
+        cache: "no-store", // Ensure fresh data on each fetch
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (response.status === ApiStatusCode.OK) {
+        const data: CollectionResponse = await response.json();
+        setCollections(data);
+      } else {
+        throw new Error("Failed to fetch collections");
       }
-    };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCollections();
   }, []);
 
-  // add the creation, update and deletion functions
-  const createCollection = async (collection: Omit<Collection, "id">) => {
+  const fetchCollectionById = async (id: string) => {
+    try {
+      const response = await fetch(`/collections/${id}`, {
+        cache: "no-store", // Ensure fresh data on each fetch
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (response.status === ApiStatusCode.OK) {
+        const collection: { collection: CollectionWithRelations } =
+          await response.json();
+        setCollection(collection.collection);
+        return collection;
+      } else {
+        throw new Error("Failed to fetch collection");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      return null;
+    }
+  };
+
+  const createCollection = async (
+    collection: Omit<Collection, "id" | "createdAt">
+  ) => {
     try {
       const response = await fetch("/collections", {
         method: "POST",
@@ -45,7 +82,7 @@ export function useCollections() {
         body: JSON.stringify(collection),
       });
       if (response.status === ApiStatusCode.CREATED) {
-        const newCollection: Collection = await response.json();
+        const newCollection: CollectionWithRelations = await response.json();
         setCollections((prev) => ({
           collections: [...prev.collections, newCollection],
         }));
@@ -70,7 +107,8 @@ export function useCollections() {
         body: JSON.stringify(collection),
       });
       if (response.status === ApiStatusCode.OK) {
-        const updatedCollection: Collection = await response.json();
+        const updatedCollection: CollectionWithRelations =
+          await response.json();
         setCollections((prev) => ({
           collections: prev.collections.map((c) =>
             String(c.id) === id ? updatedCollection : c
@@ -108,5 +146,8 @@ export function useCollections() {
     createCollection,
     updateCollection,
     deleteCollection,
+    fetchCollections,
+    fetchCollectionById,
+    collection,
   };
 }

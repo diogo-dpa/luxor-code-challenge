@@ -5,8 +5,9 @@ interface AccordionBidContentProps {
   title: string;
   price: string;
   bidder: string;
+  status: Status;
   isOwner?: boolean;
-  onChangeStatus?: (status: string) => void;
+  onChangeStatus?: (status: Status) => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }
@@ -15,6 +16,7 @@ export function AccordionBidContent({
   title,
   price,
   bidder,
+  status,
   isOwner = false,
   onChangeStatus,
   onEdit,
@@ -27,13 +29,15 @@ export function AccordionBidContent({
       <div className="flex space-x-2">
         <Button
           onClick={() => onChangeStatus(Status.ACCEPTED)}
-          className="px-3 py-1 text-sm text-blue-600 bg-blue-100 rounded hover:bg-blue-200">
+          disabled={status === Status.ACCEPTED}
+          className="px-3 py-1 text-sm text-blue-600 bg-blue-100 rounded hover:bg-blue-200 disabled:cursor-not-allowed">
           Accept
         </Button>
         <Button
           onClick={() => onChangeStatus(Status.REJECTED)}
-          className="px-3 py-1 text-sm text-red-600 bg-red-100 rounded hover:bg-red-200">
-          Delete
+          disabled={status === Status.REJECTED}
+          className="px-3 py-1 text-sm text-red-600 bg-red-100 rounded hover:bg-red-20 disabled:cursor-not-allowed">
+          Reject
         </Button>
       </div>
     );
@@ -64,6 +68,7 @@ export function AccordionBidContent({
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-gray-600">{price}</p>
         <p className="text-xs text-gray-500">Bidder: {bidder}</p>
+        <p className="text-xs text-gray-500">Status: {status}</p>
       </div>
       {isOwner ? renderOnEditAndDeleteActions() : renderOnChangeStatusActions()}
     </div>

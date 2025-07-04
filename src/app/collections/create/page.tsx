@@ -16,8 +16,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { PageWrapper } from "@/components/organisms/PageWrapper/PageWrapper";
 import { collectionConfig, collectionFormSchema } from "../page-utils";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Collection } from "../../../../prisma/generated/prisma";
+import { useCollections } from "@/hooks/useCollections";
 
 export default function CollectionCreationPage() {
+  const { createCollection } = useCollections();
+  const router = useRouter();
+  const userId = useSearchParams().get("userId");
   const form = useForm<z.infer<typeof collectionFormSchema>>({
     resolver: zodResolver(collectionFormSchema),
     defaultValues: {
@@ -27,9 +33,18 @@ export default function CollectionCreationPage() {
       price: 0,
     },
   });
-  function onSubmit(data: z.infer<typeof collectionFormSchema>) {
+
+  async function onSubmit(data: z.infer<typeof collectionFormSchema>) {
+    const payload: Omit<Collection, "id" | "createdAt"> = {
+      price: data.price,
+      name: data.name,
+      description: data.description,
+      stocks: data.stocks,
+      userId: userId ? parseInt(userId) : 0,
+    };
+    await createCollection(payload);
     toast("You submitted the following values");
-    console.log(data);
+    router.push("/");
   }
 
   return (
